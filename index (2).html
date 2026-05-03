@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bus Control Panel</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+    <style>
+        body { margin: 0; }
+        #map { height: 80vh; }
+
+        #controls {
+            padding: 10px;
+            text-align: center;
+        }
+
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="controls">
+    <button onclick="moveBus('bus1',22.60,88.40)">Move Bus 1</button>
+    <button onclick="moveBus('bus2',22.58,88.37)">Move Bus 2</button>
+    <button onclick="moveBus('bus3',22.57,88.35)">Move Bus 3</button>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+var map = L.map('map').setView([22.55, 88.32], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+let markers = {};
+
+// Load buses every 2 sec
+setInterval(() => {
+
+    fetch("http://localhost:5000/buses")
+    .then(res => res.json())
+    .then(data => {
+
+        for (let busId in data) {
+
+            let lat = data[busId].lat;
+            let lng = data[busId].lng;
+
+            if (!markers[busId]) {
+                markers[busId] = L.marker([lat, lng]).addTo(map)
+                    .bindPopup(busId);
+            } else {
+                markers[busId].setLatLng([lat, lng]);
+            }
+
+        }
+
+    });
+
+}, 2000);
+
+// Move bus via button
+function moveBus(busId, lat, lng) {
+
+    fetch("http://localhost:5000/update-location", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            busId: busId,
+            lat: lat,
+            lng: lng
+        })
+    });
+
+}
+
+</script>
+
+</body>
+</html>

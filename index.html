@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Bus Navigation</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+        }
+
+        #map {
+            height: 100vh;
+        }
+
+        /* LEFT PANEL */
+        #panel {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: 250px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 15px;
+            z-index: 1000;
+            color: white;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        /* LOGIN */
+        #loginBox {
+            position: absolute;
+            top: 30%;
+            left: 38%;
+            width: 300px;
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 2000;
+            color: white;
+            text-align: center;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: none;
+            background: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginBox">
+    <h3 id="title">Login</h3>
+    <input id="user" placeholder="Username">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="auth()">Login</button>
+    <p id="toggle">New user? <a onclick="switchForm()">Signup</a></p>
+</div>
+
+<!-- PANEL -->
+<div id="panel">
+    <h3>🚌 Bus Tracker</h3>
+    <input id="search" placeholder="Search Bus">
+    <select id="routeSelect">
+        <option>All Routes</option>
+    </select>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+// ================= LOGIN SYSTEM =================
+let users = JSON.parse(localStorage.getItem("users")) || {};
+let isLogin = true;
+
+function switchForm() {
+    isLogin = !isLogin;
+    document.getElementById("title").innerText = isLogin ? "Login" : "Signup";
+}
+
+function auth() {
+    let u = user.value;
+    let p = pass.value;
+
+    if (!u || !p) return alert("Fill all");
+
+    if (isLogin) {
+        if (users[u] === p) {
+            loginBox.style.display = "none";
+        } else {
+            alert("Wrong login");
+        }
+    } else {
+        users[u] = p;
+        localStorage.setItem("users", JSON.stringify(users));
+        alert("Signup success");
+        switchForm();
+    }
+}
+
+// ================= MAP =================
+var map = L.map('map').setView([22.57, 88.36], 12);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+// ================= ROUTES =================
+let routes = {
+    "7A": [[22.55,88.32],[22.56,88.34],[22.57,88.36]],
+    "33": [[22.54,88.30],[22.55,88.33],[22.57,88.35]]
+};
+
+let select = document.getElementById("routeSelect");
+
+for (let r in routes) {
+    let op = document.createElement("option");
+    op.text = r;
+    select.appendChild(op);
+}
+
+let drawn = [];
+
+select.onchange = () => {
+    drawn.forEach(d => map.removeLayer(d));
+    drawn = [];
+
+    let r = select.value;
+    if (r === "All Routes") return;
+
+    let line = L.polyline(routes[r], {color:'red'}).addTo(map);
+    drawn.push(line);
+    map.fitBounds(routes[r]);
+};
+
+// ================= BUS SIMULATION =================
+let buses = [
+    {id:"Bus1", route:"7A", i:0},
+    {id:"Bus2", route:"33", i:0}
+];
+
+let markers = {};
+
+function moveBuses() {
+
+    buses.forEach(bus => {
+
+        let coords = routes[bus.route];
+
+        bus.i++;
+        if (bus.i >= coords.length) bus.i = 0;
+
+        let pos = coords[bus.i];
+
+        if (!markers[bus.id]) {
+            markers[bus.id] = L.marker(pos).addTo(map)
+                .bindPopup(bus.id);
+        } else {
+            markers[bus.id].setLatLng(pos);
+        }
+
+    });
+}
+
+setInterval(moveBuses, 2000);
+
+// ================= SEARCH =================
+search.onkeyup = function() {
+
+    let val = this.value;
+
+    for (let b in markers) {
+        if (b.includes(val)) {
+            map.setView(markers[b].getLatLng(), 15);
+            markers[b].openPopup();
+        }
+    }
+};
+
+</script>
+
+</body>
+</html>
